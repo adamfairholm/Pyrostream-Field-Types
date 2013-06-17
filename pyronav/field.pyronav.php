@@ -1,8 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- *
- * PyroStreams pyroNav field type
+ * PyroStreams PyroNav field type
  *
  * @package   PyroStreams navigation Field Type
  * @author    Tim Reynolds
@@ -20,22 +19,13 @@ class Field_pyronav
 	public $db_col_type     = 'int';
 	
 	/**
-	 * Optional variables 
+	 * Custom Parameters 
 	 */
 	public $custom_parameters	= array('navigation_group');
-	public $lang              = array(
-	  'en' => array(
-	      'navigation_group'  => 'Navigation Group',
-	      'Dead Link'         => 'This link no longer exists'
-	  )
-	);
 	
-	/**
-	 * create CI instance
-	 */
 	public function __construct()
 	{
-		$this->CI =& get_instance();
+		$this->CI = get_instance();
 	}
 	
 	/**
@@ -46,28 +36,23 @@ class Field_pyronav
 	 * @param  array
 	 * @return string
 	 */
-	public function form_output( $data )
+	public function form_output($data)
 	{
-	  $options = array();
-	  $nav     = array();
-	  $this->CI->load->model('navigation/navigation_m');
-	  
-	  if ($data['custom']['navigation_group'] != 0)
-		{
-      $nav = $this->CI->navigation_m->get_links(array(
-        'group' => $data['custom']['navigation_group']
-      ));
+		$options = array();
+		$nav     = array();
+
+		$this->CI->load->model('navigation/navigation_m');
+
+		if ( ! $data['custom']['navigation_group']) {
+			return null;
 		}
-	  else
-	  {
-	    $nav = $this->CI->navigation_m->get_links();
+
+		$nav = $this->CI->navigation_m->get_link_tree($data['custom']['navigation_group']);
+
+		foreach ($nav as $item) {
+			$options[$item['id']] = $item['title'];
 		}
-	
-	  foreach ($nav as $item)
-		{
-	    $options[$item->id] = $item->title;
-		}
-	
+
 		return form_dropdown($data['form_slug'], $options);
 	}
 	
@@ -78,26 +63,25 @@ class Field_pyronav
 	* @param  array
 	* @return string
 	*/
-	public function pre_output( $input, $data )
+	public function pre_output($input, $data)
 	{
-	  $attributes = array();
-	  $nav_item = '';
-	    
-    $this->CI->load->model('navigation/navigation_m');
-    $nav_item = $this->CI->navigation_m->get_link($input);
-    
-    if ( ! empty($nav_item))
-    {
-	    // Create the url for the link type
-	    $nav_item   = $this->make_url($nav_item);
-	    $attributes = $this->generate_nav_attributes($nav_item);
-	
-	    return anchor($nav_item->url, $nav_item->title, $attributes);
-    }
-    else
-    {
-      return anchor(site_url('admin/navigation'),'This link no longer exists');
-    }
+		$attributes = array();
+		$nav_item = '';
+
+		$this->CI->load->model('navigation/navigation_m');
+		$nav_item = $this->CI->navigation_m->get_link($input);
+
+		if ( ! empty($nav_item))
+		{
+			// Create the url for the link type
+			$nav_item   = $this->make_url($nav_item);
+			$attributes = $this->generate_nav_attributes($nav_item);
+
+			return anchor($nav_item->url, $nav_item->title, $attributes);
+		
+		} else {
+			return anchor(site_url('admin/navigation'),'This link no longer exists');
+		}
 	}
 	
 	/**
@@ -107,63 +91,46 @@ class Field_pyronav
 	* tag array so relationship data can be called with
 	* a {field.column} syntax
 	*
-	* @access public
 	* @param  string
 	* @param  string
 	* @param  array
 	* @return array
 	*/
-	public function pre_output_plugin( $prefix, $input, $params )
+	public function pre_output_plugin($input, $params)
 	{
-	  $nav_data   = array();
-	  $attributes = array();
-	  $nav_item   = '';
-	  
-	  $this->CI->load->model('navigation/navigation_m');
-	  $nav_item   = $this->CI->navigation_m->get_link($input);
-	  
-	  if (!empty($nav_item))
-	  {
-	    // Create the url for the link type
-	    $nav_item   = $this->make_url($nav_item);
-	    $attributes = $this->generate_nav_attributes($nav_item);
-	
-	    $nav_data[substr($prefix, 0, -1)]        = anchor($nav_item->url, $nav_item->title, $attributes);
-	    $nav_data[$prefix.'id']                  = $nav_item->id;
-	    $nav_data[$prefix.'title']               = $nav_item->title;
-	    $nav_data[$prefix.'parent']              = $nav_item->parent;
-	    $nav_data[$prefix.'has_kids']            = $nav_item->has_kids;
-	    $nav_data[$prefix.'link_type']           = $nav_item->link_type;
-	    $nav_data[$prefix.'page_id']             = $nav_item->page_id;
-	    $nav_data[$prefix.'module_name']         = $nav_item->module_name;
-	    $nav_data[$prefix.'url']                 = $nav_item->url;
-	    $nav_data[$prefix.'uri']                 = $nav_item->uri;
-	    $nav_data[$prefix.'navigation_group_id'] = $nav_item->navigation_group_id;
-	    $nav_data[$prefix.'position']            = $nav_item->position;
-	    $nav_data[$prefix.'target']              = $nav_item->target;
-	    $nav_data[$prefix.'class']               = $nav_item->class;
-	  }
-	  else
-	  {
-	    //if the link has been deleted
-	    // set everything to blank
-	    $nav_data[substr($prefix, 0, -1)]        = '';
-	    $nav_data[$prefix.'id']                  = '';
-	    $nav_data[$prefix.'title']               = '';
-	    $nav_data[$prefix.'parent']              = '';
-	    $nav_data[$prefix.'has_kids']            = '';
-	    $nav_data[$prefix.'link_type']           = '';
-	    $nav_data[$prefix.'page_id']             = '';
-	    $nav_data[$prefix.'module_name']         = '';
-	    $nav_data[$prefix.'url']                 = '';
-	    $nav_data[$prefix.'uri']                 = '';
-	    $nav_data[$prefix.'navigation_group_id'] = '';
-	    $nav_data[$prefix.'position']            = '';
-	    $nav_data[$prefix.'target']              = '';
-	    $nav_data[$prefix.'class']               = '';
-	  }
-	  
-	  return $nav_data;
+		if ( ! $input) {
+			return array();
+		}
+
+		$nav_data   = array();
+		$attributes = array();
+		$nav_item   = '';
+
+		$this->CI->load->model('navigation/navigation_m');
+		$nav_item   = $this->CI->navigation_m->get_link($input);
+
+		if ( ! empty($nav_item))
+		{
+			// Create the url for the link type
+			$nav_item   = $this->make_url($nav_item);
+			//$attributes = $this->generate_nav_attributes($nav_item);
+
+			$nav_data['id']                  = $nav_item->id;
+			$nav_data['title']               = $nav_item->title;
+			$nav_data['parent']              = $nav_item->parent;
+			$nav_data['has_kids']            = $nav_item->has_kids;
+			$nav_data['link_type']           = $nav_item->link_type;
+			$nav_data['page_id']             = $nav_item->page_id;
+			$nav_data['module_name']         = $nav_item->module_name;
+			$nav_data['url']                 = $nav_item->url;
+			$nav_data['uri']                 = $nav_item->uri;
+			$nav_data['navigation_group_id'] = $nav_item->navigation_group_id;
+			$nav_data['position']            = $nav_item->position;
+			$nav_data['target']              = $nav_item->target;
+			$nav_data['class']               = $nav_item->class;
+		}
+
+		return $nav_data;
 	}
 	
 	/**
@@ -172,7 +139,7 @@ class Field_pyronav
 	* @param  string
 	* @return string
 	*/
-	public function param_navigation_group( $value = '' )
+	public function param_navigation_group($value = '')
 	{ 
 	  $options          = array();
 	  $navigation_group = array();
@@ -192,26 +159,24 @@ class Field_pyronav
 	/**
 	* Determine the url from the link_type 
 	*
-	* @access private
 	* @param  object
 	* @return array
 	*/
-	private function make_url( $nav_item )
+	private function make_url($nav_item)
 	{
-	  switch($nav_item->link_type)
-	  {
-	    case 'uri':
-	      $nav_item->url = site_url($nav_item->url);
-	    break;
-	    case 'module':
-	      $nav_item->url = site_url($nav_item->module_name);
-	    break;
-	    case 'page':
-	      $this->CI->load->model('pages/pages_m');
-	      $page = $this->CI->pages_m->get($nav_item->page_id);
-	      $nav_item->url = $page ? site_url($nav_item->uri) : '';
-	    break;
-	  }
+		switch ($nav_item->link_type) {
+			case 'uri':
+			  $nav_item->url = site_url($nav_item->url);
+			break;
+			case 'module':
+			  $nav_item->url = site_url($nav_item->module_name);
+			break;
+			case 'page':
+			  $this->CI->load->model('pages/page_m', false);
+			  $page = $this->CI->page_m->get($nav_item->page_id);
+			  $nav_item->url = $page ? site_url($nav_item->uri) : '';
+			break;
+		}
 	  
 	  return $nav_item;
 	}
@@ -219,7 +184,6 @@ class Field_pyronav
 	/**
 	* Process navigation attributes 
 	*
-	* @access private
 	* @param  object
 	* @return array
 	*/
@@ -231,6 +195,5 @@ class Field_pyronav
 		
 	  return $attributes;
 	}
-}
 
-/* End of file field.pyronav.php */
+}
